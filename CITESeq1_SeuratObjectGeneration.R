@@ -1,12 +1,21 @@
-## ##CITE-Seq (1) Script - Seurat Object Generations####
+## ##CITE-Seq (1): Seurat Object Generation####
+#Julius Christopher Baeck
+
+####Note: The Seurat object(s) have been generated with the Seurat version 4 pipeline and associated dependencies.
+####      Seurat version 5 is now implemented with updated dependencies.
+####      UMAP clustering is dependent on the versions of individual packages used for the data analysis.
+####      Consequently, the UMAP plot(s) will look marginally different for each individual, depending on the versions of each package used for analysis.
+####      Cell numbers, gene expression and clustering however will always stay the same, hence there is no difference in the biology, just in the representation on the UMAP.
+####      The cell ranger output files can be provided to run the code below.
+####      Furthermore, the Seurat object used for the data analysis within the PhD thesis can also be provided if results want to be reproduced.
+
+
 ####Setup####
 #Set working directory to folder containing files
 #Load required packages
 library(Polychrome)
 library(Seurat)
 library(future)
-library(RColorBrewer)
-library(viridis)
 library(stringr)
 library(Matrix)
 library(ggplot2)
@@ -14,6 +23,7 @@ library(SeuratDisk)
 library(clustree)
 library(scRepertoire)
 library(patchwork)
+sessionInfo()
 
 #Colour palettes
 col_con1 <- createPalette(50,  c("#2A9D8F", "#E9C46A", "#E76F51"))
@@ -22,16 +32,18 @@ col_con1 <-as.character(col_con1)
 #Alter working capacity
 options(future.globals.maxSize= 10097152000) # 10Gb
 
+#Use Seurat v3 and v4 format
+options(Seurat.object.assay.version = 'v3')
+
 ####Load the 10X Cell Ranger output####
-#Note: CITE-Seq (1) files are within the CITE-Seq2 folder, due to different ordering compared to the chapters in the PhD Thesis
-#Read the 10x Cell Ranger Output
-a_ge.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/GE/A_WT_GE/outs/filtered_feature_bc_matrix")
-b_ge.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/GE/B_WT_GE/outs/filtered_feature_bc_matrix")
-c_ge.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/GE/C_BCL6_GE/outs/filtered_feature_bc_matrix")
-d_ge.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/GE/D_BCL6_GE/outs/filtered_feature_bc_matrix")
-f_ge.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/GE/F_E1020K_GE/outs/filtered_feature_bc_matrix")
-g_ge.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/GE/G_E1020K_BCL6_GE/outs/filtered_feature_bc_matrix")
-h_ge.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/GE/H_E1020K_BCL6_GE/outs/filtered_feature_bc_matrix")
+##Read the 10x Cell Ranger Output - input file path
+#a_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC16.3g
+#b_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC16.3c
+#c_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC18.2e
+#d_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC16.3a
+#f_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC18.2e
+#g_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC17.3d
+#h_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC16.3b
 
 #Add the sample to the cell names, consistent with antibody data below
 colnames(a_ge.data)=gsub("-1","_a",colnames(a_ge.data))
@@ -53,15 +65,14 @@ rownames(h_ge.data)=str_to_title(rownames(h_ge.data))
 head(f_ge.data)
 
 ####Load 10X Antibody data####
-#Read the 10x Antibody output
-a_ab.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/second_batch_data_CP/A_WT/umi_count",gene.column=1)
-b_ab.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/second_batch_data_CP/B_WT/umi_count",gene.column=1)
-c_ab.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/second_batch_data_CP/C_BCL6/umi_count",gene.column=1)
-d_ab.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/second_batch_data_CP/D_BCL6/umi_count",gene.column=1)
-f_ab.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/second_batch_data_CP/F_E1020K/umi_count",gene.column=1)
-g_ab.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/second_batch_data_CP/G_E1020K_BCL6/umi_count",gene.column=1)
-h_ab.data <- Read10X(data.dir = "~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/second_batch_data_CP/H_E1020K_BCL6/umi_count",gene.column=1)
-
+#Read the 10x Antibody output - input file path
+#a_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE",gene.column=1) #Mouse KOBC16.3g
+#b_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE",gene.column=1) #Mouse KOBC16.3c
+#c_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE",gene.column=1) #Mouse KOBC18.2e
+#d_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE",gene.column=1) #Mouse KOBC18.2a
+#f_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE",gene.column=1) #Mouse KOBC16.3a
+#g_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE",gene.column=1) #Mouse KOBC17.3d
+#h_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE",gene.column=1) #Mouse KOBC16.3b
 
 #Tidy up the rownames from the data
 rownames(a_ab.data)=gsub("-[^-]+$","",rownames(a_ab.data),perl=TRUE)
@@ -279,7 +290,6 @@ DefaultAssay(experiment) <- "ADT"
 rownames(experiment) #27 antibodies
 DefaultAssay(experiment) <- "RNA"
 
-
 ####Add Metadata to Seurat Object####
 head(experiment[[]])
 
@@ -384,14 +394,14 @@ ggsave("patch.dimplots.tiff", width = 90, height = 30, units = "cm", patch.dimpl
 
 
 ####Loading VDJ data seperately####
-##Load contig file##
-a_cl.data <- read.csv("~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/VDJ_batch2/A_WT_VDJ/outs/filtered_contig_annotations.csv")
-b_cl.data <- read.csv("~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/VDJ_batch2/B_WT_VDJ/outs/filtered_contig_annotations.csv")
-c_cl.data <- read.csv("~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/VDJ_batch2/C_BCL6_VDJ/outs/filtered_contig_annotations.csv")
-d_cl.data <- read.csv("~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/VDJ_batch2/D_BCL6_VDJ/outs/filtered_contig_annotations.csv")
-f_cl.data <- read.csv("~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/VDJ_batch2/F_E1020K_VDJ/outs/filtered_contig_annotations.csv")
-g_cl.data <- read.csv("~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/VDJ_batch2/G_E1020K_BCL6_VDJ/outs/filtered_contig_annotations.csv")
-h_cl.data <- read.csv("~/Desktop/Datasets/CITE-Sequencing_Data/CITE_Seq_2_files/VDJ_batch2/H_E1020K_BCL6_VDJ/outs/filtered_contig_annotations.csv")
+##Load contig file - input file path
+#a_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOBC16.3g
+#b_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOBC16.3c
+#c_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOBC18.2e
+#d_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOBC18.2a
+#f_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOBC16.3a
+#g_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOBC17.3d
+#h_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOBC16.3b
 
 ##Match barcode names with GE and ADT data##
 a_cl.data$barcode=gsub("-1","_a",a_cl.data$barcode)
@@ -466,127 +476,22 @@ experiment_nNA <- combineExpression(combined2,
                                     proportion = TRUE)
 head(experiment_nNA[[]])
 
-SaveH5Seurat(experiment_wNA, "CITESeq2_AllCells_wNA.h5seurat", overwrite = TRUE) #With all cells, excluding cells with no ADTs. NAs from clonotype data kept
-SaveH5Seurat(experiment_nNA, "CITESeq2_AllCells_nNA.h5seurat", overwrite = TRUE) #With all cells, excluding cells with no ADTs. NAs from clonotype data removed
+SaveH5Seurat(experiment_wNA, "CITESeq1_AllCells_wNA.h5seurat", overwrite = TRUE) #With all cells, excluding cells with no ADTs. NAs from clonotype data kept
+SaveH5Seurat(experiment_nNA, "CITESeq1_AllCells_nNA.h5seurat", overwrite = TRUE) #With all cells, excluding cells with no ADTs. NAs from clonotype data removed
 
 ####Load Seurat Object####
-experiment <- LoadH5Seurat(file.choose("CITESeq2_AllCells_wNA.h5seurat")) #With clonotype data, including NAs, no BCR genes (except for class inforamtion)
+experiment <- LoadH5Seurat(file.choose("CITESeq1_AllCells_nNA.h5seurat"))#With clonotype data, excluding NAs, no BCR genes (except for class inforamtion)
 experiment$seurat_clusters <- experiment$wsnn_res.0.1
 Idents(experiment) <- experiment$seurat_clusters
 
-#Or
-
-experiment <- LoadH5Seurat(file.choose("CITESeq2_AllCells_nNA.h5seurat"))#With clonotype data, excluding NAs, no BCR genes (except for class inforamtion)
-experiment$seurat_clusters <- experiment$wsnn_res.0.1
-Idents(experiment) <- experiment$seurat_clusters
-
-#DimPlot all cells
-names(col_con1) <- levels(experiment$seurat_clusters) #One colour associated with one cluster
-UMAP1 <- DimPlot(experiment, reduction = "wnn.umap", cols = col_con1, pt.size = 1, label = TRUE, label.box = TRUE, label.size = 8) +
-  theme_bw() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("All cells") +
+Allcells.UMAP <- DimPlot(Allcells, reduction = "wnn.umap", cols = col_con1_dark, pt.size = 2, label = TRUE, label.box = TRUE, label.color = "white", label.size = 8, repel = TRUE) +
+  theme_bw() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("Total splenocytes") +
   theme(plot.title = element_text(color="black", size= 30, face="bold"),
         legend.text = element_text(size = 20),
-        text = element_text(size = 20),
-        legend.position = "bottom") +
-  NoLegend() #Can remove if legend is needed
-print(UMAP1)
-ggsave("UMAP1.tiff", width = 30, height = 30, units = "cm", UMAP1, compression = "lzw")
+        text = element_text(size = 20)) +
+  NoLegend()
+print(Allcells.UMAP)
+ggsave("Allcells.UMAP.tiff", width = 15, height = 15, units = "cm", Allcells.UMAP, compression = "lzw")
 
 
-####Subsetting into B, T and Other cells####
-DefaultAssay(experiment) <- "ADT"
-Unmapped <- FeaturePlot(experiment, features = "Unmapped", reduction = "wnn.umap", pt.size = 1, order = FALSE) +
-  theme_bw() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("CD19 cell surface expression") +
-  scale_colour_gradientn(colours = magma(10)) +
-  theme(plot.title = element_text(color="black", size=30, face="bold"),
-        legend.text = element_text(size = 20),
-        text = element_text(size = 30),
-        legend.position = c(.95, .95),
-        legend.justification = c("right", "top"),
-        legend.box.just = "right",
-        legend.margin = margin(6, 6, 6, 6))
-print(Unmapped)
-ggsave("Unmapped.tiff", width = 30, height = 30, units = "cm", Unmapped, compression = "lzw")
-
-CD19 <- FeaturePlot(experiment, features = "Cd19", reduction = "wnn.umap", pt.size = 1, order = FALSE) +
-  theme_bw() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("CD19 cell surface expression") +
-  scale_colour_gradientn(colours = magma(10)) +
-  theme(plot.title = element_text(color="black", size=30, face="bold"),
-        legend.text = element_text(size = 20),
-        text = element_text(size = 30),
-        legend.position = c(.95, .95),
-        legend.justification = c("right", "top"),
-        legend.box.just = "right",
-        legend.margin = margin(6, 6, 6, 6))
-print(CD19)
-ggsave("CD19.tiff", width = 30, height = 30, units = "cm", CD19, compression = "lzw")
-
-CD4 <- FeaturePlot(experiment, features = "Cd4", reduction = "wnn.umap", pt.size = 1, order = FALSE) +
-  theme_bw() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("CD4 cell surface expression") +
-  scale_colour_gradientn(colours = magma(10)) +
-  theme(plot.title = element_text(color="black", size=30, face="bold"),
-        legend.text = element_text(size = 20),
-        text = element_text(size = 30),
-        legend.position = c(.95, .95),
-        legend.justification = c("right", "top"),
-        legend.box.just = "right",
-        legend.margin = margin(6, 6, 6, 6))
-print(CD4)
-ggsave("CD4.tiff", width = 30, height = 30, units = "cm", CD4, compression = "lzw")
-
-CD8a <- FeaturePlot(experiment, features = "Cd8a", reduction = "wnn.umap", pt.size = 1, order = FALSE) +
-  theme_bw() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("CD8a cell surface expression") +
-  scale_colour_gradientn(colours = magma(10)) +
-  theme(plot.title = element_text(color="black", size=30, face="bold"),
-        legend.text = element_text(size = 20),
-        text = element_text(size = 30),
-        legend.position = c(.95, .95),
-        legend.justification = c("right", "top"),
-        legend.box.just = "right",
-        legend.margin = margin(6, 6, 6, 6))
-print(CD8a)
-ggsave("CD8a.tiff", width = 30, height = 30, units = "cm", CD8a, compression = "lzw")
-
-DefaultAssay(experiment) <- "RNA"
-Ncr1 <- FeaturePlot(experiment, features = "Ncr1", reduction = "wnn.umap", pt.size = 1, order = FALSE) +
-  theme_bw() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("Ncr1 gene expression") +
-  scale_colour_gradientn(colours = mako(10)) +
-  theme(plot.title = element_text(color="black", size=30, face="bold"),
-        legend.text = element_text(size = 20),
-        text = element_text(size = 30),
-        legend.position = c(.95, .95),
-        legend.justification = c("right", "top"),
-        legend.box.just = "right",
-        legend.margin = margin(6, 6, 6, 6))
-print(Ncr1)
-ggsave("Ncr1.tiff", width = 30, height = 30, units = "cm", Ncr1, compression = "lzw")
-
-
-Prdm1 <- FeaturePlot(experiment, features = "Prdm1", reduction = "wnn.umap", pt.size = 1, order = FALSE) +
-  theme_bw() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("Prdm1 gene expression") +
-  scale_colour_gradientn(colours = mako(10)) +
-  theme(plot.title = element_text(color="black", size=30, face="bold"),
-        legend.text = element_text(size = 20),
-        text = element_text(size = 30),
-        legend.position = c(.95, .95),
-        legend.justification = c("right", "top"),
-        legend.box.just = "right",
-        legend.margin = margin(6, 6, 6, 6))
-print(Prdm1)
-ggsave("Prdm1.tiff", width = 30, height = 30, units = "cm", Prdm1, compression = "lzw")
-
-patch.Bcells <- UMAP1 | CD19 | Prdm1
-ggsave("patch.Bcells.tiff", width = 90, height = 30, units = "cm", patch.Bcells, compression = "lzw")
-Bcell.clusters <- c("0", "1", "2", "10","11", "17", "18", "24", "25", "26", "29", "31") #12 cludsters
-
-patch.Tcells <- CD4 | CD8a | Ncr1
-ggsave("patch.Tcells.tiff", width = 90, height = 30, units = "cm", patch.Tcells, compression = "lzw")
-Tcell.clusters <- c("3", "4", "5", "6", "7", "9", "14", "16", "22", "28", "30") #11 clusters
-
-Other.cells <- c("8", "12", "13", "15", "19", "20", "21", "23", "27", "32", "33", "34") #12 clusters
-
-#Final plots
-patch.broad.clustering <- patch.Bcells / patch.Tcells
-ggsave("patch.broad.clustering.tiff", width = 90, height = 60, units = "cm", patch.broad.clustering, compression = "lzw")
-
-
+####Note: The R code for re-clustering of subsetted cells (B cells) can be found under "CITESeq1_BcellSubsetting".

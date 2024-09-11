@@ -1,54 +1,42 @@
-## ##CITE-Seq (2) Script - Seurat object generation - capitalised lower case genes ####
+## ##CITE-Seq (2): Seurat Object Generation####
 #Julius Christopher Baeck
+
+####Note: The Seurat object(s) have been generated with the Seurat version 4 pipeline and associated dependencies.
+####      Seurat version 5 is now implemented with updated dependencies.
+####      UMAP clustering is dependent on the versions of individual packages used for the data analysis.
+####      Consequently, the UMAP plot(s) will look marginally different for each individual, depending on the versions of each package used for analysis.
+####      Cell numbers, gene expression and clustering however will always stay the same, hence there is no difference in the biology, just in the representation on the UMAP.
+####      The cell ranger output files can be provided to run the code below.
+####      Furthermore, the Seurat object used for the data analysis within the PhD thesis can also be provided if results want to be reproduced.
+
+
 ####Setup####
 #Set working directory folder of containing files
 #Load required packages
 library(Seurat)
-library(ggplot2)
-library(tidyverse)
-library(patchwork)
+library(future)
+library(stringr)
 library(Matrix)
-library(RColorBrewer)
-library(writexl)
-library(ggridges)
+library(ggplot2)
+library(SeuratDisk)
 library(clustree)
 library(scRepertoire)
-library(future)
-library(alakazam)
-library(immunarch)
-library(airr)
-library(biomaRt)
-library(SeuratDisk)
-library(SeuratData)
-library(stringr)
 library(harmony)
-library(viridis)
+sessionInfo()
 
 #Alter working capacity
-plan()
-
-plan("multiprocess", workers = 4)
 options(future.globals.maxSize= 10097152000) # 10Gb
 
-#Initial setup of colour palettes
-col = colorRampPalette(brewer.pal(12, 'Set3'))(20)
-
-colbig = colorRampPalette(brewer.pal(12, 'Set3'))(50)
-col_con = viridis(50)
-nb.cols <- 13
-mycolors <- colorRampPalette(brewer.pal(11, "RdYlBu"))(nb.cols)
-?alphabet
-
 ####Load the 10X Cell Ranger output####
-#Note: CITE-Seq (2) files are within the CITE-Seq1 folder, due to different ordering compared to the chapters in the PhD Thesis
 #Read the 10x Cell Ranger Output
-c1_ge.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_1_files/Sample_GE_out/C1_GE/outs/filtered_feature_bc_matrix")
-c2_ge.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_1_files/Sample_GE_out/C2_GE/outs/filtered_feature_bc_matrix")
-d1_ge.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_1_files/Sample_GE_out/D1_GE/outs/filtered_feature_bc_matrix")
-d2_ge.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_1_files/Sample_GE_out/D2_GE/outs/filtered_feature_bc_matrix")
-a_ge.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_2_files/GE/A_WT_GE/outs/filtered_feature_bc_matrix")
-b_ge.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_2_files/GE/B_WT_GE/outs/filtered_feature_bc_matrix")
-f_ge.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_2_files/GE/F_E1020K_GE/outs/filtered_feature_bc_matrix")
+#c1_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOCB10.3d
+#c2_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOCB10.3g
+#d1_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC10.3f
+#d2_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC13.2b
+#a_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC16.3g
+#b_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC16.3c
+#f_ge.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC16.3a
+
 
 #Add the sample to the cell names, consistent with antibody data below
 colnames(c1_ge.data)=gsub("-1","_c1",colnames(c1_ge.data))
@@ -71,13 +59,13 @@ head(f_ge.data)
 
 ####Load 10X Antibody data####
 #Read the 10x Antibody output
-c1_ab.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_1_files/Antibody_fraction/C1_SP_out_2/umi_count",gene.column=1)
-c2_ab.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_1_files/Antibody_fraction/C2_SP_out_2/umi_count",gene.column=1)
-d1_ab.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_1_files/Antibody_fraction/D1_SP_out_2/umi_count",gene.column=1)
-d2_ab.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_1_files/Antibody_fraction/D2_SP_out_2/umi_count",gene.column=1)
-a_ab.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_2_files/second_batch_data_CP/A_WT/umi_count",gene.column=1)
-b_ab.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_2_files/second_batch_data_CP/B_WT/umi_count",gene.column=1)
-f_ab.data <- Read10X(data.dir = "~/Desktop/CITE-Sequencing_Data/CITE_Seq_2_files/second_batch_data_CP/F_E1020K/umi_count",gene.column=1)
+#c1_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOCB10.3d
+#c2_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOCB10.3g
+#d1_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC10.3f
+#d2_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC13.2b
+#a_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC16.3g
+#b_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC16.3c
+#f_ab.data <- Read10X(data.dir = "INPUT FILE PATH HERE") #Mouse KOBC16.3a
 
 #Tidy up the rownames from the data
 rownames(c1_ab.data)=gsub("-[^-]+$","",rownames(c1_ab.data),perl=TRUE)
@@ -109,7 +97,6 @@ colnames(f_ab.data)=paste(colnames(f_ab.data),"_f",sep="")
 head(f_ab.data)
 
 ####Combine 10X Cell Ranger and Antibody Data into a Suerat Object####
-
 m <- Matrix(nrow = nrow(c1_ab.data), ncol = ncol(c1_ge.data), data = 0, sparse = TRUE)
 rownames(m)=rownames(c1_ab.data)
 colnames(m)=colnames(c1_ge.data)
@@ -176,13 +163,13 @@ head(f[[]])
 
 ####Incoperate VDJ data####
 #Load contig file
-c1_cl.data <- read.csv("~/Desktop/CITE-Sequencing_Data/CITE_Seq_1_files/VDJ/C1_VDJ/outs/filtered_contig_annotations.csv")
-c2_cl.data <- read.csv("~/Desktop/CITE-Sequencing_Data/CITE_Seq_1_files/VDJ/C2_VDJ/outs/filtered_contig_annotations.csv")
-d1_cl.data <- read.csv("~/Desktop/CITE-Sequencing_Data/CITE_Seq_1_files/VDJ/D1_VDJ/outs/filtered_contig_annotations.csv")
-d2_cl.data <- read.csv("~/Desktop/CITE-Sequencing_Data/CITE_Seq_1_files/VDJ/D2_VDJ/outs/filtered_contig_annotations.csv")
-a_cl.data <- read.csv("~/Desktop/CITE-Sequencing_Data/CITE_Seq_2_files/VDJ_batch2/A_WT_VDJ/outs/filtered_contig_annotations.csv")
-b_cl.data <- read.csv("~/Desktop/CITE-Sequencing_Data/CITE_Seq_2_files/VDJ_batch2/B_WT_VDJ/outs/filtered_contig_annotations.csv")
-f_cl.data <- read.csv("~/Desktop/CITE-Sequencing_Data/CITE_Seq_2_files/VDJ_batch2/F_E1020K_VDJ/outs/filtered_contig_annotations.csv")
+#c1_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOCB10.3d
+#c2_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOCB10.3g
+#d1_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOBC10.3f
+#d2_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOBC13.2b
+#a_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOBC16.3g
+#b_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOBC16.3c
+#f_cl.data <- read.csv("INPUT FILE PATH HERE") #Mouse KOBC16.3a
 
 #match barcode names with GE and ADT data
 c1_cl.data$barcode=gsub("-1","_c1",c1_cl.data$barcode)
@@ -261,146 +248,12 @@ filter_seurat = function(seurat_object){
 }
 
 head(experiment[[]])
-experiment <-  filter_seurat(experiment)
-SaveH5Seurat(experiment, filename = "experiment.lc.plain", overwrite = TRUE) #Non-batch corrected Seurat obejct
+experiment <-  filter_seurat(experiment) #22521 genes across 28913 cells
 
-####Batch-correction####
-#Assign merged Seurat object
-seurat_object_merged = experiment
+####Saving Seurat Object####
+SaveH5Seurat(experiment, filename = "experiment.plain", overwrite = TRUE) #Non-batch corrected Seurat obejct
 
-#Normalise and calculate PCAs
-seurat_object_merged = seurat_object_merged %>%
-  NormalizeData(verbose = FALSE) %>%
-  FindVariableFeatures(selection.method = "vst", nfeatures = 3000) %>% 
-  ScaleData(verbose = FALSE) %>% 
-  RunPCA(pc.genes = seurat_object_merged@var.genes, npcs = 20, verbose = FALSE)
+#Or
 
-#Add batch information to orig.ident column in metadata
-Idents(seurat_object_merged)
-seurat_object_merged[["old.ident"]] <- Idents(seurat_object_merged)
-Idents(seurat_object_merged)
-seurat_object_merged <- RenameIdents(seurat_object_merged, `c1` = "Batch 1", `c2` = "Batch 1", `d1` = "Batch 1", `d2` = "Batch 1", `a` = "Batch 2", `b` = "Batch 2", `f` = "Batch 2")
-seurat_object_merged[["orig.ident"]] <- Idents(seurat_object_merged)
-Idents(seurat_object_merged) <- seurat_object_merged[["old.ident"]]
-Idents(seurat_object_merged)
-
-#Run harmony
-seurat_object_merged = RunHarmony(seurat_object_merged, 
-                                  "orig.ident", 
-                                  plot_convergence = TRUE)
-
-#Accessing harmony embeddings:
-harmony_embeddings = Embeddings(seurat_object_merged, 'harmony')
-seurat_object_merged = seurat_object_merged %>% 
-  RunUMAP(reduction = "harmony", dims = 1:20) %>% 
-  FindNeighbors(reduction = "harmony", dims = 1:20) %>% 
-  FindClusters(resolution = 0.5)
-
-#Visualise batches
-head(seurat_object_merged[[]])
-DimPlot(seurat_object_merged, reduction = "umap", group.by = "orig.ident")
-FeaturePlot(seurat_object_merged, features = "Sox4")
-
-####RNA####
-#Nornmalise dataset - log normalisation#
-experiment <- NormalizeData(experiment, verbose = TRUE)
-experiment <- FindVariableFeatures(experiment, selection.method = "vst", nfeatures = 3000)
-experiment <- ScaleData(experiment)
-
-#Normalise dataset - SCTransform
-experiment = SCTransform(experiment, verbose = TRUE)
-experiment[["SCT"]]
-
-#Visualise top variable features
-top20 = head(VariableFeatures(experiment), 20)
-plot1.1 = VariableFeaturePlot(experiment)
-top20_plot = LabelPoints(plot = plot1.1, points = top20, repel = TRUE, xnudge = 0, ynudge = 0)
-
-#Cell Cycle genes
-S.genes <- cc.genes.updated.2019$s.genes
-S.genes <- lapply(S.genes, str_to_title)
-G2M.genes <-  cc.genes.updated.2019$g2m.genes
-G2M.genes <- lapply(G2M.genes, str_to_title)
-experiment <- CellCycleScoring(experiment, s.features=S.genes, g2m.features=G2M.genes, set.ident = TRUE)
-Idents(object = experiment) <- "old.ident"
-
-#RNA - PCA
-experiment <- RunPCA(experiment, verbose = FALSE, features = VariableFeatures(object = experiment))
-pca_variance <- experiment@reductions$pca@stdev^2
-plot(pca_variance/sum(pca_variance), 
-     ylab="Proportion of variance explained", 
-     xlab="Principal component")
-abline(h = 0.01) #25
-
-#Visualise PCA results - RNA
-print(experiment[["pca"]], dims = 1:5, nfeatures = 5)
-VizDimLoadings(experiment, dims = 1:4, reduction = "pca", nfeatures = 15)
-PCA_RNA_1 <- DimPlot(experiment, reduction = "pca", dims = c(1,2))
-PCA_RNA_2 <- DimPlot(experiment, reduction = "pca", dims = c(1,3))
-DimHeatmap(experiment, dims = 1:6, cells = 500, balanced = TRUE)
-
-#RNA clustering
-DefaultAssay(experiment) <- "RNA" #For log normalisation
-DefaultAssay(experiment) <- "SCT" #For SCTransform
-
-experiment <- FindNeighbors(experiment, dims = 1:25)
-experiment <- FindClusters(experiment, resolution = 1.5, verbose = FALSE)#1.5 for the resolution
-clustree(experiment, prefix = "SCT_snn_res.") + theme(legend.position="bottom")
-experiment <-RunUMAP(experiment, dims = 1:25, assay = 'SCT', reduction.name = 'SCT.umap', reduction.key = 'SCTUMAP_')
-experiment_p1 <- DimPlot(experiment, label = TRUE, reduction = "SCT.umap", pt.size = 1.3, label.size = 6, label.box = TRUE) +  ggtitle("SCT Clustering") + theme_void() + NoLegend()
-experiment_p1 <- experiment_p1 + theme(plot.title = element_text(color="black", size=25, face="bold"))
-
-####ADT####
-DefaultAssay(experiment) <- "ADT"
-
-#ADT normalisation
-VariableFeatures(experiment) <- rownames(experiment[["ADT"]])
-experiment <- NormalizeData(experiment, normalization.method = "CLR", margin = 2)
-experiment <- ScaleData(experiment)
-experiment <- RunPCA(experiment, reduction.name = 'apca')
-
-#ADT PCA
-apca_variance <- experiment@reductions$apca@stdev^2
-plot(apca_variance/sum(apca_variance), 
-     ylab="Proportion of variance explained", 
-     xlab="Principal component")
-abline(h = 0.01) #25
-
-#Visualise PCA results - ADT
-print(experiment[["apca"]], dims = 1:10, nfeatures = 5)
-PCA_ADT_1 <- VizDimLoadings(experiment, dims = 1:4, reduction = "apca", nfeatures = 15)
-PCA_ADT_2 <- DimPlot(experiment, reduction = "apca", dims = c(1,2), group.by = "orig.ident") + ggtitle("ADT PCA")
-PCA_ADT_3 <- DimPlot(experiment, reduction = "apca", dims = c(1,3), group.by = "orig.ident") + ggtitle("ADT PCA")
-DimHeatmap(experiment, dims = 1:6, cells = 500, balanced = TRUE, reduction = "apca")
-
-#ADT clustering
-experiment <- FindNeighbors(experiment, dims = 1:25, reduction = "apca")
-experiment <- FindClusters(experiment, resolution = 1.0, verbose = FALSE) #1 for the resolution
-clustree(experiment, prefix = "ADT_snn_res.") + theme(legend.position="bottom")
-experiment <- RunUMAP(experiment, reduction = 'apca', dims = 1:25, assay = 'ADT', reduction.name = 'adt.umap', reduction.key = 'adtUMAP_')
-experiment_p2 <- DimPlot(experiment, label = TRUE, reduction = "adt.umap", pt.size = 1.3, label.size = 6, label.box = TRUE) +  ggtitle("ADT Clustering") + theme_void() + NoLegend()
-experiment_p2 <- experiment_p2 + theme(plot.title = element_text(color="black", size=25, face="bold"))
-
-####WNN####
-DefaultAssay(experiment) <- "RNA" #For log normalisation
-DefaultAssay(experiment) <- "SCT" #For SCTransform
-
-#Combine into wnn plot
-experiment <- FindMultiModalNeighbors(
-  experiment, reduction.list = list("pca", "apca"), 
-  dims.list = list(1:25, 1:25), modality.weight.name = "RNA.weight")
-
-#WNN clustering
-experiment <- FindClusters(experiment, graph.name = "wsnn", algorithm = 3, resolution = 0.5, verbose = TRUE) #0.5 for the resolution
-clustree(experiment, prefix = "wsnn_res.") + theme(legend.position="bottom")
-experiment <- RunUMAP(experiment, nn.name = "weighted.nn", reduction.name = "wnn.umap", reduction.key = "wnnUMAP_")
-experiment_p3 <- DimPlot(experiment, label = TRUE, reduction = "wnn.umap", pt.size = 1.3, label.size = 6, label.box = TRUE) +  ggtitle("WNN Clustering") + theme_void() + NoLegend()
-experiment_p3 <- experiment_p3 + theme(plot.title = element_text(color="black", size=25, face="bold"))
-
-
-head(experiment[[]])
-experiment.lc <- experiment
-head(experiment.lc[[]])
-FeaturePlot(experiment.lc, features = "Cd19", reduction = "adt.umap")
-SaveH5Seurat(experiment.lc, filename = "experiment.lc", overwrite = TRUE) #Batch-corrected Seurat Object
+experiment <- LoadH5Seurat(file.choose("experiment.plain.h5seurat"))
 

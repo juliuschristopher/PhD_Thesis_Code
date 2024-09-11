@@ -1,86 +1,32 @@
-## ##Sub-clustering of Cluster 2 (B regulatory cells) CITE-Seq (1) dataset####
+## ##CITE-Seq (1): Sub-clustering of B regulatory cells (Subcluster 2)####
+#Julius Christopher Baeck
+
+####Note: The Seurat object(s) have been generated with the Seurat version 4 pipeline and associated dependencies.
+####      Seurat version 5 is now implemented with updated dependencies.
+####      UMAP clustering is dependent on the versions of individual packages used for the data analysis.
+####      Consequently, the UMAP plot(s) will look marginally different for each individual, depending on the versions of each package used for analysis.
+####      Cell numbers, gene expression and clustering however will always stay the same, hence there is no difference in the biology, just in the representation on the UMAP.
+####      The cell ranger output files can be provided to run the code below.
+####      Furthermore, the Seurat object used for the data analysis within the PhD thesis can also be provided if results want to be reproduced.
+
+
 ####Setup####
 #Set working directory to folder containing files
 ##Packages##
-library(Seurat)
 library(Polychrome)
-library(SeuratDisk)
+library(Seurat)
+library(stringr)
+library(Matrix)
 library(ggplot2)
-library(viridis)
+library(SeuratDisk)
 library(clustree)
 library(patchwork)
-library(stringr)
-library(dplyr)
-library(ggpubr)
-library(tidyverse)
-library(HGNChelper)
-library(miloR)
-library(SingleCellExperiment)
-library(scater)
-library(scran)
-library(sc2marker)
-library(msigdbr)
-library(presto)
-library(fgsea)
-sessionInfo()
-
-##Potential Packages##
-library(clustifyr)
-library(ArrayExpress)
-library(GEOquery)
-library(clustifyrdatahub)
-library(devtools)
-library(rjags)
-library(infercnv)
-library(clustree)
-library(enrichR)
-library(enrichplot)
-library(clusterProfiler)
-library(org.Mm.eg.db)
-library(org.Hs.eg.db)
-library(AnnotationHub)
-library(scRepertoire)
-library(decoupleR)
-library(OmnipathR)
-library(grid)
-library(gridExtra)
-library(SCpubr)
-library(EnhancedVolcano)
-library(ggraph)
-library(RColorBrewer)
-library(openxlsx)
-library(ensembldb)
-library(DOSE)
-library(Ibex)
-library(HGNChelper)
-library(openxlsx)
-library(VennDiagram)
-library(miloR)
-library(SingleCellExperiment)
-library(scater)
-library(scran)
 sessionInfo()
 
 ##Colour paneles##
-col_con1 <- createPalette(50,  c("#2A9D8F", "#E9C46A", "#E76F51"))
-col_con1 <-as.character(col_con1)
 col_con2 <- c("#C94055", "#EFE3A2", "#4FA4C2", "#E80DFF", "#26FF0D", "#0D65FB", "#0DF6BD", "#F8000D", "#FE0DBD", "#FDA30D",
               "#FCCFEB", "#B4F2A7", "#C5F00D", "#FC6A00", "#F8AA92", "#94B2F4", "#FE8BBD", "#F24798", "#22FAFB", "#B898FB") #Adjusted for 20x bright colours
-col_con3 <- createPalette(50,  c("#CE4257", "#FFF2B0", "#4BA3C3"))
-col_con3 <-as.character(col_con2)
-col_con6 <- c("#B4F2A7", "#E6C266", "#BFEC00", "#FF00FC", "#E76F51", "skyblue")
-col_con.genotypes <- c("#666666", "#fdcc66", "#0f80ff", "#91bd95") #For Genotypes
-col_con.mouse <- c("grey1", "azure4", "gold1", "chocolate2", "blue", "forestgreen", "darkolivegreen1")#For individual mice
-col_con.sex <- c("darkred", "darkturquoise") #For Sex
-col_con_clonotype <- rev(c("grey39", "#4FA4C2", "chartreuse4", "gold2", "darkturquoise","firebrick3")) #Clonotype all
-col_con.clonotype.no.hyper <- c( "darkturquoise", "gold2", "chartreuse4", "grey39") #Clonotype no hyperexpansion
-
-
-##Vector orders##
-clo_order <- c("NA", "Small (1e-04 < X <= 0.001)", "Medium (0.001 < X <= 0.01)", "Large (0.01 < X <= 0.1)", "Hyperexpanded (0.1 < X <= 1)")
-clo_order.reverse <- c("Hyperexpanded (0.1 < X <= 1)", "Large (0.01 < X <= 0.1)", "Medium (0.001 < X <= 0.01)", "Small (1e-04 < X <= 0.001)","NA")
-gen_order <- c("WT", "BCL6", "E1020K", "E1020K_BCL6")
-mouse_order <- c("WT_1", "WT_2", "BCL6_1", "BCL6_2", "E1020K", "E1020K_BCL6_1", "E1020K_BCL6_2")
+col_con3 <- c("#972c6b", "#4477aa", "khaki", "aquamarine4", "#ef6677", "lightskyblue")
 
 ##Functions##
 tfidf = function(data,target,universe){
@@ -104,29 +50,7 @@ tfidf = function(data,target,universe){
                     idf=idf,
                     tfidf=score,
                     qval=qvals)[order(score,decreasing=TRUE),])
-}
-
-#Load Pathway analysis datasets
-msigdbr_species() #Show species
-Hallmark <- msigdbr(species="Mus musculus", category="H") #Hallmark genes
-C1 <- msigdbr(species="Mus musculus", category="C1") #Positional gene sets - corresponding to human chromosome cytogenetic bands
-C2 <- msigdbr(species="Mus musculus", category="C2") #Curated gene sets, including chemical and genetic perturbations (CGP) and canonical pathways (CP) (BioCarta, KEGG, PID, Reactome and WikiPathways)
-C2_CP_WIKIPATHWAYS <- msigdbr(species="Mus musculus", category="C2", subcategory = "CP:WIKIPATHWAYS")
-C2_CP_REACTOME <- msigdbr(species="Mus musculus", category="C2", subcategory = "CP:REACTOME")
-C2_CP_PID <- msigdbr(species="Mus musculus", category="C2", subcategory = "CP:PID")
-C2_CP_KEGG <- msigdbr(species="Mus musculus", category="C2", subcategory = "CP:KEGG")
-C2_CP_BIOCARTA <- msigdbr(species="Mus musculus", category="C2", subcategory = "CP:BIOCARTA")
-C3 <- msigdbr(species="Mus musculus", category="C3") #Regulatory target gene sets
-C3_TFT_GTRD <- msigdbr(species="Mus musculus", category="C3", subcategory = "TFT:GTRD") #Regulatory target gene sets Transcription Factor Targets - GTRD
-C3_TFT_LEGACY <- msigdbr(species="Mus musculus", category="C3", subcategory = "TFT:TFT_Legacy") #Regulatory target gene sets Transcription Factor Targets - Legacy
-C4 <- msigdbr(species="Mus musculus", category="C4") #Computational gene sets
-C5 <- msigdbr(species="Mus musculus", category="C5") #Ontology gene sets
-C5_BP <- msigdbr(species="Mus musculus", category="C5", subcategory = "GO:BP") #GO Biological process
-C5_CC <- msigdbr(species="Mus musculus", category="C5", subcategory = "GO:CC") #GO Cellular component
-C5_MF <- msigdbr(species="Mus musculus", category="C5", subcategory = "GO:MF") #GO Molecular function
-C6 <- msigdbr(species="Mus musculus", category="C6") #Oncogenicsignature gene sets
-C7_IMMUNESIGDB <- msigdbr(species="Mus musculus", category="C7", subcategory = "IMMUNESIGDB") #Immunologic signature gene sets - ImmuneSigDB gene sets - 4872 sets
-C8 <- msigdbr(species="Mus musculus", category="C8") #Cell type signature gene sets
+} #For downstreal analysis (not essential)
 
 
 ####Load B cell Suerat Object####
@@ -140,14 +64,14 @@ Idents(Bcells) <- factor(Idents(Bcells), levels = my_levels)
 Bcells$seurat_clusters <- factor(Idents(Bcells), levels = my_levels)
 
 names(col_con2) <- levels(Bcells$seurat_clusters) #One colour associated with one cluster
-UMAP2 <- DimPlot(Bcells, reduction = "wnn.umap", cols = col_con2, pt.size = 2, label = TRUE, label.box = TRUE, label.size = 8) +
+UMAP1 <- DimPlot(Bcells, reduction = "wnn.umap", cols = col_con2, pt.size = 2, label = TRUE, label.box = TRUE, label.size = 8) +
   theme_bw() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("B cells") +
   theme(plot.title = element_text(color="black", size= 30, face="bold"),
         legend.text = element_text(size = 20),
         text = element_text(size = 20)) +
   NoLegend()
-print(UMAP2)
-ggsave("UMAP2.tiff", width = 30, height = 30, units = "cm", UMAP2, compression = "lzw")
+print(UMAP1)
+ggsave("UMAP1.tiff", width = 30, height = 30, units = "cm", UMAP1, compression = "lzw")
 
 
 ####Labeling of B cell Clusters####
@@ -160,6 +84,21 @@ Bcells[["Label"]] <- Idents(Bcells)
 Idents(Bcells) <- Bcells$Label
 
 names(col_con2) <- levels(Bcells$Label) #One colour associated with one cluster
+UMAP2 <- DimPlot(Bcells, reduction = "wnn.umap", cols = col_con2, pt.size = 2, label = TRUE, label.box = TRUE, label.size = 6 , repel = TRUE) +
+  theme_bw() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("B cells") +
+  theme(plot.title = element_text(color="black", size= 30, face="bold"),
+        legend.text = element_text(size = 20),
+        text = element_text(size = 20)) +
+  NoLegend()
+print(UMAP2)
+ggsave("UMAP2.tiff", width = 30, height = 30, units = "cm", UMAP2, compression = "lzw")
+
+
+####Remove Outlier Clusters####
+Bcells_all_clusters <- Bcells
+Bcells <- subset(Bcells, idents = c("Outlier (1)", "Outlier (2)"), invert = TRUE)
+Bcells$Label
+
 UMAP3 <- DimPlot(Bcells, reduction = "wnn.umap", cols = col_con2, pt.size = 2, label = TRUE, label.box = TRUE, label.size = 6 , repel = TRUE) +
   theme_bw() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("B cells") +
   theme(plot.title = element_text(color="black", size= 30, face="bold"),
@@ -168,21 +107,6 @@ UMAP3 <- DimPlot(Bcells, reduction = "wnn.umap", cols = col_con2, pt.size = 2, l
   NoLegend()
 print(UMAP3)
 ggsave("UMAP3.tiff", width = 30, height = 30, units = "cm", UMAP3, compression = "lzw")
-
-
-####Remove Outlier Clusters####
-Bcells_all_clusters <- Bcells
-Bcells <- subset(Bcells, idents = c("Outlier (1)", "Outlier (2)"), invert = TRUE)
-Bcells$Label
-
-UMAP4 <- DimPlot(Bcells, reduction = "wnn.umap", cols = col_con2, pt.size = 2, label = TRUE, label.box = TRUE, label.size = 6 , repel = TRUE) +
-  theme_bw() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("B cells") +
-  theme(plot.title = element_text(color="black", size= 30, face="bold"),
-        legend.text = element_text(size = 20),
-        text = element_text(size = 20)) +
-  NoLegend()
-print(UMAP4)
-ggsave("UMAP4.tiff", width = 30, height = 30, units = "cm", UMAP4, compression = "lzw")
 
 
 ####Re-clustering B cells####
@@ -291,11 +215,32 @@ ggsave("Cluster2_p3.tiff", width = 30, height = 30, units = "cm", Cluster2_p3, c
 patch.Cluster2.dimplots <- Cluster2_p1 | Cluster2_p2 | Cluster2_p3
 ggsave("patch.Cluster2.dimplots.tiff", width = 90, height = 30, units = "cm", patch.Cluster2.dimplots, compression = "lzw")
 
-#Save SeuratObejct
+####Saving Seurat Obejct####
 SaveH5Seurat(Cluster2, "CITESeq1_Cluster2_Bcells_nBCRnNA.h5seurat", overwrite = TRUE)
 
 ####Load Cluster 2 Seurat Object####
 Cluster2 <- LoadH5Seurat(file.choose("CITESeq1_Cluster2_Bcells_nBCRnNA.h5seurat")) #With clonotype data, excluding NAs, no BCR genes (except for class inforamtion)
 Cluster2$seurat_clusters <- Cluster2$wsnn_res.0.5
 Idents(Cluster2) <- Cluster2$seurat_clusters
+
+####Labeling of B regulatory cell Subcluster####
+Idents(Cluster2) <- Cluster2$seurat_clusters
+Cluster2 <- RenameIdents(Cluster2,
+                         `0` = "B220- B cells", `1` = "Ccr6-hi Breg cells", `2` = "Pre-Plasmablasts", `3` = "Xist-hi Breg cells",
+                         `4` = "Immunosuppressive Atypical B cells", `5` = "Bcl6-hi Breg cells")
+Cluster2[["Label"]] <- Idents(Cluster2)
+Idents(Cluster2) <- Cluster2$Label
+
+names(col_con2) <- levels(Cluster2$seurat_clusters) #One colour associated with one cluster
+UMAP4 <- DimPlot(Cluster2, reduction = "wnn.umap", cols = col_con3, pt.size = 3, label = TRUE, label.box = TRUE, label.size = 6 , repel = TRUE) +
+  theme_void() + xlab("UMAP1") + ylab("UMAP2") + ggtitle("Subclustering") +
+  labs(subtitle = "B Regulagtory cells") +
+  theme(plot.title = element_text(color="black", size= 30, face="bold"),
+        legend.text = element_text(size = 30),
+        legend.position = "right",
+        text = element_text(size = 20)) +
+  guides(colour = guide_legend(override.aes = list(size=10))) +
+  NoLegend()
+print(UMAP4)
+ggsave("UMAP4.tiff", width = 15, height = 15, units = "cm", UMAP4, compression = "lzw")
 

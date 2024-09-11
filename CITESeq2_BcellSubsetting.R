@@ -1,41 +1,29 @@
-## ##CITE-Seq (2) Script - Subsettting and reclustering B cells ####
+## ##Re-clustering of all B cells in the CITE-Seq (2) dataset####
 #Julius Christopher Baeck
+
+####Note: The Seurat object(s) have been generated with the Seurat version 4 pipeline and associated dependencies.
+####      Seurat version 5 is now implemented with updated dependencies.
+####      UMAP clustering is dependent on the versions of individual packages used for the data analysis.
+####      Consequently, the UMAP plot(s) will look marginally different for each individual, depending on the versions of each package used for analysis.
+####      Cell numbers, gene expression and clustering however will always stay the same, hence there is no difference in the biology, just in the representation on the UMAP.
+####      The cell ranger output files can be provided to run the code below.
+####      Furthermore, the Seurat object used for the data analysis within the PhD thesis can also be provided if results want to be reproduced.
+
+
 ####Setup####
 #Set working directory to folder containing files
-####Load requried packages####
+##Packages##
 library(Seurat)
-library(ggplot2)
-library(tidyverse)
-library(patchwork)
-library(Matrix)
-library(RColorBrewer)
-library(writexl)
-library(ggridges)
-library(clustree)
-library(scRepertoire)
-library(future)
-library(alakazam)
-library(immunarch)
-library(airr)
-library(biomaRt)
-library(SeuratDisk)
-library(SeuratData)
 library(stringr)
-library(viridis)
-library(escape)
-library(dittoSeq)
-library(SingleCellExperiment)
-library(ggsci)
-library(pals)
+library(Matrix)
+library(ggplot2)
+library(SeuratDisk)
+library(clustree)
+library(patchwork)
 library(harmony)
-library(gridExtra)
-library(scales)
-library(clusterProfiler)
-library(org.Hs.eg.db)
-library(AnnotationHub)
-library(org.Mm.eg.db)
+sessionInfo()
 
-####Define functions####
+##Define functions##
 ###TFIDF
 tfidf = function(data,target,universe){
   if(!all(target %in% universe))
@@ -58,73 +46,37 @@ tfidf = function(data,target,universe){
                     idf=idf,
                     tfidf=score,
                     qval=qvals)[order(score,decreasing=TRUE),])
-}
+} #For downstreal analysis (not essential)
 
-####Define colour palettes####
+##Define colour palettes##
 col_con = viridis(50)
 nb.cols <- 13
 mycolors <- colorRampPalette(brewer.pal(11, "RdYlBu"))(nb.cols)
 
 
-####Load Seurat object (lower case gene names - mouse)####
-experiment.lc <- LoadH5Seurat("experiment.lc.h5seurat")
-experiment.lc.plain <- LoadH5Seurat("experiment.lc.plain.h5seurat")
-head(experiment.lc[[]])
-head(experiment.lc.plain[[]])
+####Load Seurat object - experiment.plain####
+experiment.plain <- LoadH5Seurat(file.choose("experiment.plain.h5seurat"))
+head(experiment.plain[[]])
 
-####Subsetting####
-test <- experiment.lc.plain
+test <- experiment.plain
 
-##Based on clonotype abd x3 CD19 ADT
+##Selection of B cells clonotype + CD19 ADT > 2
 DefaultAssay(test) <-  "RNA"
 Bcells <- subset(test, subset = cloneType != "NA") #12794
 DefaultAssay(Bcells) <-  "ADT"
 Bcells <- subset(Bcells, subset = Cd19 > 2) #12636
-B_cells_p6
 
-##Based on minimum of x3 CD19 ADT and 1x CD19 RNA
-DefaultAssay(test) <-  "ADT"
-Bcells1 <- subset(test, subset = Cd19 > 2)
-DefaultAssay(Bcells1) <-  "RNA"
-Bcells1 <- subset(Bcells1, subset = Cd19 > 0) #10592
-
-
-Bcells4 <- subset(test, subset = Cd19 > 2)
-Bcells4 <- subset(Bcells4, subset = Cd4 == 0)
-
-##Based on other B cells associated genes and a minimum of x3 CD19 ADT 
-DefaultAssay(test) <-  "RNA"
-Bcells2 <- subset(test, subset = Ms4a1 > 0)
-DefaultAssay(Bcells2) <-  "ADT"
-Bcells2 <- subset(Bcells2, subset = Cd19 > 2) #13665
-
-DefaultAssay(test) <-  "RNA"
-Bcells3 <- subset(test, subset = Cd79a > 0)
-DefaultAssay(Bcells3) <-  "ADT"
-Bcells3 <- subset(Bcells3, subset = Cd19 > 2) #14360
-
-DefaultAssay(test) <-  "RNA"
-Bcells4 <- subset(test, subset = Cd79b > 0)
-DefaultAssay(Bcells4) <-  "ADT"
-Bcells4 <- subset(Bcells4, subset = Cd19 > 2) #14297
-
-##Selecteion of Bcells (clonotype + CD19 ADT > 2) for further downstream analysis
 B_cells <- Bcells
 head(B_cells[[]])
 
 ###RNA####
 ###Normalise subset###
 DefaultAssay(B_cells) <- "RNA" #For log normalisation
-DefaultAssay(B_cells) <- "SCT" #For SCTransform
 
 ##RNA normalisation
 B_cells <- NormalizeData(B_cells, verbose = TRUE)
 B_cells <- FindVariableFeatures(B_cells, nfeatures = 3000)
 B_cells <- ScaleData(B_cells)
-
-#Or
-B_cells <-  SCTransform(B_cells, verbose = TRUE)
-B_cells[["SCT"]]
 
 ##Visualisation
 top20 <-  head(VariableFeatures(B_cells), 20)
@@ -140,8 +92,7 @@ plot(pca_variance/sum(pca_variance),
 abline(h = 0.01) #35
 
 ##RNA clustering
-DefaultAssay(B_cells) <- "RNA" #For log normalisation
-DefaultAssay(B_cells) <- "SCT" #For SCTransform
+DefaultAssay(B_cells) <- "RNA"
 
 B_cells <- FindNeighbors(B_cells, dims = 1:35)
 B_cells <- FindClusters(B_cells, resolution = 1.0, verbose = FALSE) #1.0 for the resolution
@@ -175,8 +126,7 @@ B_cells_p2 <- DimPlot(B_cells, label = TRUE, reduction = "adt.umap", pt.size = 1
 B_cells_p2 <- B_cells_p2 + theme(plot.title = element_text(color="black", size=25, face="bold"))
 
 ####WNN####
-DefaultAssay(B_cells) <- "RNA" #For log normalisation
-DefaultAssay(B_cells) <- "SCT" #For SCTransform
+DefaultAssay(B_cells) <- "RNA"
 
 ##Combine into wnn plot
 B_cells <- FindMultiModalNeighbors(
@@ -193,18 +143,18 @@ B_cells_p3 <- B_cells_p3 + theme(plot.title = element_text(color="black", size=2
 ##Change Idents
 Idents(B_cells)
 B_cells[["old.ident"]] <- Idents(B_cells)
-Idents(B_cells) <- B_cells[["orig.ident"]]
+Idents(B_cells) <- B_cells$orig.ident
 B_cells<- RenameIdents(B_cells, `c1` = "Mb1 Cyp11a1 KO 1", `c2` = "Mb1 Cyp11a1 KO 2", `d1` = "Mb1 E1020K Cyp11a1 KO 1", `d2` = "Mb1 E1020K Cyp11a1 KO 2", `a` = "WT 1", `b` = "WT 2", `f` = "E1020K")
 B_cells[["orig.ident"]] <- Idents(B_cells)
-Idents(B_cells) <- B_cells[["old.ident"]]
+Idents(B_cells) <- B_cells$old.ident
 Idents(B_cells)
 
 ####Harmony reductions####
-Idents(B_cells) <- B_cells[["orig.ident"]]
+Idents(B_cells) <- B_cells$orig.ident
 B_cells[["Genotype"]] <- Idents(B_cells)
 B_cells <- RenameIdents(B_cells, `Mb1 Cyp11a1 KO 1` = "Batch 1", `Mb1 Cyp11a1 KO 2` = "Batch 1", `Mb1 E1020K Cyp11a1 KO 1` = "Batch 1", `Mb1 E1020K Cyp11a1 KO 2` = "Batch 1", `WT 1` = "Batch 2", `WT 2` = "Batch 2", `E1020K` = "Batch 2")
 B_cells[["Batch"]] <- Idents(B_cells)
-Idents(B_cells) <- B_cells[["old.ident"]]
+Idents(B_cells) <- B_cells$old.ident
 head(B_cells[[]])
 
 ##Batch effect for RNA
@@ -251,9 +201,8 @@ Batch_harmony.wnn.umap <- DimPlot(B_cells, label = TRUE, reduction = "harmony.wn
 
 Batch_plot <- Batch_rna.umap + Batch_adt.umap + Batch_wnn.umap + Batch_harmony.rna.umap + Batch_harmony.adt.umap + Batch_harmony.wnn.umap
 
-B_cells
-head(B_cells[[]])
+####Save B cells Seurat Object####
 SaveH5Seurat(B_cells, filename = "CITESeq1_Bcells", overwrite = TRUE)
 
 #Or
-B_cells <- LoadH5Seurat("CITESeq1_Bcells.h5seurat")
+B_cells <- LoadH5Seurat(file.choose("CITESeq1_Bcells.h5seurat"))
